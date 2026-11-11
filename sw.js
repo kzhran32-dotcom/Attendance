@@ -1,4 +1,4 @@
-const V='attendance-v3';
+const V='attendance-v5';
 const CORE=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==V).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
@@ -15,4 +15,8 @@ self.addEventListener('fetch',e=>{
     }).catch(()=>hit);
     return hit||net;
   }));
+});
+self.addEventListener('notificationclick',e=>{
+  e.notification.close();
+  e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(l=>l.length?l[0].focus():clients.openWindow('./')));
 });

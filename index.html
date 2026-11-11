@@ -128,6 +128,10 @@ details summary{cursor:pointer;font-weight:600}
     <div class="row"><input type="date" id="hd"><button class="s p" id="ha">إضافة</button></div><div id="hols"></div>
     <div style="font-weight:600;margin:10px 0 4px">المشاريع</div>
     <div class="row"><input type="text" id="pn" placeholder="اسم مشروع جديد"><button class="s p" id="pa">إضافة</button></div><div id="plist"></div>
+    <div style="font-weight:600;margin:12px 0 4px">التنبيهات 🔔</div>
+    <label class="row"><input type="checkbox" id="rem"> نبّهني لو نسيت الحضور أو الانصراف</label>
+    <div class="row" style="margin-top:6px"><span>الحضور قبل:</span><input type="time" id="rma" style="direction:ltr"><span>الانصراف بعد:</span><input type="time" id="rmp" style="direction:ltr"></div>
+    <div class="mu" style="margin-bottom:8px">يعمل في أيام العمل فقط (بدون العطلات والإجازات)، ويصلك التنبيه طالما التطبيق مفتوح أو شغّال في الخلفية.</div>
     <div style="font-weight:600;margin:12px 0 4px">نسخة احتياطية</div><div class="row"><button class="s p" id="bk">تصدير البيانات</button><label class="s" style="cursor:pointer">استيراد<input type="file" id="imp" accept=".json,application/json" style="display:none"></label></div><div class="mu">لنقل بياناتك إلى جهاز أو نسخة أخرى من البرنامج.</div>
     <label class="row" style="margin-top:10px"><input type="checkbox" id="ask"> اسألني عن المشاريع عند تسجيل الانصراف</label>
   </div></details>
@@ -302,43 +306,57 @@ let cur=null;
 function dayMins(d){return D.recs.filter(r=>r.date===d&&r.out).reduce((a,r)=>a+dur(r),0)}
 function openProj(d){
   const ex=D.alloc[d]||{};
-  cur={d,tot:dayMins(d),v:{}};
-  for(const k in ex)cur.v[k]=dec(ex[k]);
+  cur={d,tot:dayMins(d),v:Object.assign({},ex),man:[],msg:''};
   drawProj();$('md2').style.display='flex';
 }
 function drawProj(){
   const names=[...new Set([...D.projects,...Object.keys(cur.v)])];
-  const used=Object.values(cur.v).reduce((a,x)=>a+(+x||0),0);
+  const used=Object.values(cur.v).reduce((a,x)=>a+x,0),ok=Math.abs(used-cur.tot)<=1;
   $('mb').innerHTML=`<h3>مشاريع يوم ${cur.d} (${hm(cur.tot)} ساعة)</h3>
-  ${names.map((n,i)=>`<div class="pr"><label><input type="checkbox" data-pc="${i}" ${n in cur.v?'checked':''}> ${esc(n)}</label>${n in cur.v?`<input type="number" step="0.25" min="0" value="${cur.v[n]}" data-ph="${i}"> <span class="mu">س</span>`:''}</div>`).join('')||'<div class="mu">أضف مشروعًا أولًا</div>'}
+  ${names.map((n,i)=>`<div class="pr"><label><input type="checkbox" data-pc="${i}" ${n in cur.v?'checked':''}> ${esc(n)}</label>${n in cur.v?`<input type="number" step="0.25" min="0" value="${dec(cur.v[n])}" data-ph="${i}"> <span class="mu">${cur.man.includes(n)?'يدوي':'تلقائي'}</span>`:''}</div>`).join('')||'<div class="mu">أضف مشروعًا أولًا</div>'}
   <div class="row" style="margin-top:10px"><input type="text" id="np" placeholder="مشروع جديد" style="flex:1"><button class="s p" id="npa">إضافة</button></div>
-  <div class="mu" style="margin:10px 0;${used>dec(cur.tot)+0.02?'color:var(--out)':''}">الموزع: ${Math.round(used*100)/100} من ${dec(cur.tot)} ساعة</div><div id="perr" style="color:var(--out);font-size:13px;margin-bottom:8px"></div>
+  <div class="mu" style="margin:10px 0;color:${ok?'var(--in)':'var(--out)'}">الموزع: ${hm(used)} من ${hm(cur.tot)} ${ok?'✓':'(الفرق '+hm(Math.abs(cur.tot-used))+')'}</div><div id="perr" style="color:var(--out);font-size:13px;margin-bottom:8px">${cur.msg}</div>
   <div class="row"><button class="s p" id="psv" style="flex:1">حفظ</button><button class="s" id="psk">تخطي</button></div>`;
   cur.names=names;
 }
-function splitEq(){
-  const k=Object.keys(cur.v);if(!k.length)return;
-  const e=Math.floor(cur.tot/k.length/60*100)/100;k.forEach(x=>cur.v[x]=e);
+function rebal(){
+  const sel=Object.keys(cur.v);
+  cur.man=cur.man.filter(n=>n in cur.v);
+  const auto=sel.filter(n=>!cur.man.includes(n));
+  if(!auto.length)return;
+  const ms=cur.man.reduce((a,n)=>a+cur.v[n],0);
+  const rem=Math.max(0,cur.tot-ms),base=Math.floor(rem/auto.length);
+  auto.forEach(n=>cur.v[n]=base);
+  cur.v[auto[auto.length-1]]+=rem-base*auto.length;
 }
 $('mb').addEventListener('change',e=>{
   const t=e.target;if(!cur)return;
   if(t.dataset.pc!==undefined){
     const n=cur.names[+t.dataset.pc];
-    if(t.checked)cur.v[n]=0;else delete cur.v[n];
-    splitEq();drawProj();
+    if(t.checked)cur.v[n]=0;else{delete cur.v[n];cur.man=cur.man.filter(x=>x!==n)}
+    cur.msg='';rebal();drawProj();
   }else if(t.dataset.ph!==undefined){
-    cur.v[cur.names[+t.dataset.ph]]=+t.value||0;drawProj();
+    const n=cur.names[+t.dataset.ph];
+    let m=Math.round((+t.value||0)*60);
+    cur.man=cur.man.filter(x=>x!==n);cur.man.push(n);
+    const sel=Object.keys(cur.v);
+    if(sel.length>1&&sel.every(k=>cur.man.includes(k)))cur.man.shift();
+    const ms=cur.man.filter(x=>x!==n).reduce((a,k)=>a+cur.v[k],0),mx=Math.max(0,cur.tot-ms);
+    cur.msg='';
+    if(m>mx){m=mx;cur.msg='تم تقليل الساعات لتناسب ساعات اليوم'}
+    cur.v[n]=m;rebal();drawProj();
   }
 });
 $('mb').addEventListener('click',e=>{
   const id=e.target.id;if(!cur)return;
   if(id==='npa'){
     const n=$('np').value.trim();
-    if(n){if(!D.projects.includes(n))D.projects.push(n);cur.v[n]=0;splitEq();save();renderSet();drawProj()}
+    if(n){if(!D.projects.includes(n))D.projects.push(n);cur.v[n]=0;cur.msg='';rebal();save();renderSet();drawProj()}
   }else if(id==='psv'){
-    const o={};let sm=0;for(const k in cur.v){const m=Math.round((+cur.v[k]||0)*60);if(m>0){o[k]=m;sm+=m}}
-    if(sm>cur.tot+1){$('perr').textContent='مجموع ساعات المشاريع ('+hm(sm)+') أكبر من ساعات العمل ('+hm(cur.tot)+'). عدّل الأرقام.';return}
-    if(Object.keys(o).length)D.alloc[cur.d]=o;else delete D.alloc[cur.d];
+    const o={};let sm=0;for(const k in cur.v){const m=Math.round(cur.v[k]);if(m>0){o[k]=m;sm+=m}}
+    if(!sm){$('perr').textContent='اختر مشروعًا واحدًا على الأقل، أو اضغط تخطي';return}
+    if(Math.abs(sm-cur.tot)>1){$('perr').textContent='مجموع ساعات المشاريع ('+hm(sm)+') لا يساوي ساعات العمل ('+hm(cur.tot)+'). الفرق '+hm(Math.abs(cur.tot-sm))+'.';return}
+    D.alloc[cur.d]=o;
     save();closeProj();render();
   }else if(id==='psk')closeProj();
 });
@@ -617,6 +635,92 @@ printOut=async function(html,name){
     $('bkx').onclick=()=>b.remove();
     $('bkn').onclick=async()=>{await $('bk').onclick();b.remove()};
   }
+})();
+</script>
+<script>
+function mismatches(){
+  if(!D.projects.length)return [];
+  return monthDays().map(x=>{const a=D.alloc[x.d]||{};return {d:x.d,t:x.m,a:Object.values(a).reduce((p,q)=>p+q,0)}}).filter(b=>Math.abs(b.t-b.a)>1);
+}
+function showReview(bad,cont){
+  $('mb').innerHTML='<h3>مراجعة المشاريع</h3><div class="mu" style="margin-bottom:8px">ساعات المشاريع في هذه الأيام لا تساوي ساعات العمل:</div>'
+   +bad.map(b=>`<div class="pr"><label>${b.d.slice(5)} ${DAYS[wdOf(b.d)]} — عمل ${hm(b.t)} / مشاريع ${hm(b.a)}</label><button class="s p" data-rv="${b.d}">تعديل</button></div>`).join('')
+   +`<div class="row" style="margin-top:12px">${cont?'<button class="s" id="rvc" style="flex:1">متابعة رغم ذلك</button>':''}<button class="s" id="rvx">إغلاق</button></div>`;
+  $('md2').style.display='flex';
+  window.__rvCont=cont;
+}
+$('mb').addEventListener('click',e=>{
+  const t=e.target;
+  if(t.dataset&&t.dataset.rv){openProj(t.dataset.rv)}
+  else if(t.id==='rvc'){$('md2').style.display='none';const f=window.__rvCont;window.__rvCont=null;if(f)f()}
+  else if(t.id==='rvx'){$('md2').style.display='none'}
+});
+(function(){
+  const mm=document.createElement('div');mm.id='mm';$('statsH').before(mm);
+  function markMis(){
+    const bad=mismatches();
+    if(!D.projects.length){mm.style.display='none';return}
+    const days=monthDays(),tw=days.reduce((a,x)=>a+x.m,0),ta=Object.values(projTotals()).reduce((a,x)=>a+x,0);
+    const ok=!bad.length&&Math.abs(tw-ta)<=1;
+    mm.style.cssText='margin:8px 0;padding:10px;border-radius:12px;font-size:13px;border:1px solid '+(ok?'var(--in)':'var(--out)');
+    mm.innerHTML=ok?'✓ إجمالي العمل ('+hm(tw)+') = إجمالي المشاريع ('+hm(ta)+')':'⚠ إجمالي العمل ('+hm(tw)+') ≠ إجمالي المشاريع ('+hm(ta)+') — '+bad.length+' أيام تحتاج مراجعة <button class="s p" id="mmr" style="margin-inline-start:8px">مراجعة</button>';
+    document.querySelectorAll('#dailyH button[data-proj]').forEach(b=>{if(bad.some(x=>x.d===b.dataset.proj))b.textContent='⚠ '+b.textContent});
+  }
+  mm.addEventListener('click',e=>{if(e.target.id==='mmr')showReview(mismatches())});
+  const _r3=render;render=function(){_r3();markMis()};
+  ['prt','xl'].forEach(id=>{const op=$(id).onclick;$(id).onclick=()=>{const bad=mismatches();if(bad.length)showReview(bad,op);else op()}});
+  markMis();
+})();
+</script>
+<script>
+(function(){
+  D.S.rem=D.S.rem!==false;
+  $('rem').checked=D.S.rem;$('rma').value=D.S.rma||'10:00';$('rmp').value=D.S.rmp||'18:00';
+  $('rem').onchange=async e=>{
+    D.S.rem=e.target.checked;save();
+    if(D.S.rem&&'Notification' in window&&Notification.permission==='default'){
+      const p=await Notification.requestPermission();
+      if(p!=='granted')toast('فعّل إشعارات التطبيق من إعدادات الهاتف لتصلك التنبيهات');
+    }
+    check();
+  };
+  $('rma').onchange=e=>{D.S.rma=e.target.value||'10:00';save();check()};
+  $('rmp').onchange=e=>{D.S.rmp=e.target.value||'18:00';save();check()};
+  const bar=document.createElement('div');bar.id='rmb';
+  bar.style.cssText='display:none;position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:10px;right:10px;z-index:55;background:var(--card);color:var(--tx);border:1px solid var(--ac);border-radius:14px;padding:10px 12px;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,.25);font-size:14px';
+  bar.innerHTML='<span id="rmt" style="flex:1"></span><button class="s p" id="rmg">سجّل الآن</button><button class="s" id="rmx">✕</button>';
+  document.body.appendChild(bar);
+  let hidden='';
+  $('rmg').onclick=()=>{$('btn').click();setTimeout(check,300)};
+  $('rmx').onclick=()=>{hidden=bar.dataset.k||'';bar.style.display='none'};
+  const fk=k=>'rm:'+dkey(new Date())+':'+k;
+  function sysNotify(k,title,body){
+    try{
+      if(localStorage.getItem(fk(k)))return;
+      localStorage.setItem(fk(k),'1');
+      if(!('Notification' in window)||Notification.permission!=='granted')return;
+      const o={body,icon:'icon-192.png',badge:'icon-192.png',tag:'fp-'+k,lang:'ar',dir:'rtl',vibrate:[120,60,120]};
+      if(navigator.serviceWorker&&navigator.serviceWorker.ready)navigator.serviceWorker.ready.then(r=>r.showNotification(title,o)).catch(()=>{try{new Notification(title,o)}catch(e){}});
+      else new Notification(title,o);
+    }catch(e){}
+  }
+  window.check=function(){
+    const n=new Date(),d=dkey(n),now=n.getHours()*60+n.getMinutes();
+    let k='',txt='',title='',body='';
+    const work=D.S.rem&&!D.S.off.includes(n.getDay())&&!D.holidays.includes(d)&&!D.leaves.includes(d);
+    if(work){
+      const ma=mins(D.S.rma||'10:00'),pm=mins(D.S.rmp||'18:00'),today=D.recs.filter(r=>r.date===d);
+      if(!today.length&&now>=ma&&now<ma+240){k='am';txt='☀️ نسيت تسجّل حضورك؟';title='صباح الخير ☀️';body='لسه ما سجّلتش حضورك اليوم'}
+      else if(today.some(r=>!r.out)&&now>=pm&&now<pm+360){k='pm';txt='🌇 لا تنسَ تسجّل انصرافك';title='خلصت شغل؟ 🌇';body='لا تنسَ تسجّل انصرافك'}
+    }
+    if(!k){bar.style.display='none';bar.dataset.k='';return}
+    bar.dataset.k=k;$('rmt').textContent=txt;
+    bar.style.display=(hidden===k)?'none':'flex';
+    sysNotify(k,title,body);
+  };
+  check();
+  setInterval(check,30000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)check()});
 })();
 </script>
 <script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))</script>

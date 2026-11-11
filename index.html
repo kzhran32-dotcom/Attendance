@@ -162,7 +162,7 @@ const p2=n=>String(n).padStart(2,'0');
 const dkey=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
 const tkey=d=>p2(d.getHours())+':'+p2(d.getMinutes());
 const mins=t=>{const a=t.split(':');return +a[0]*60+ +a[1]};
-const dur=r=>r.out?Math.max(0,mins(r.out)-mins(r.in)):0;
+const dur=r=>{if(!r.out)return 0;let d=mins(r.out)-mins(r.in);if(d<0)d+=1440;return d};
 const hm=m=>Math.floor(m/60)+':'+p2(Math.round(m%60));
 const dec=m=>Math.round(m/60*100)/100;
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -190,7 +190,7 @@ function tick(){
   $('date').textContent=DAYS[n.getDay()]+' '+n.getDate()+' '+MONTHS[n.getMonth()]+' '+n.getFullYear();
 }
 setInterval(tick,1000);tick();
-const openRec=()=>D.recs.find(r=>r.date===dkey(new Date())&&!r.out);
+const openRec=()=>{const n=new Date();return D.recs.find(r=>{if(r.out)return false;const a=r.date.split('-'),b=r.in.split(':');const el=n-new Date(+a[0],+a[1]-1,+a[2],+b[0],+b[1]);return el>=0&&el<864e5})};
 function btn(){
   const o=openRec();
   $('btn').textContent=o?'تسجيل الانصراف':'تسجيل الحضور';
@@ -200,8 +200,8 @@ function btn(){
 $('btn').onclick=()=>{
   const n=new Date(),o=openRec();
   if(o){o.out=tkey(n)}else D.recs.push({id:uid(),date:dkey(n),in:tkey(n),out:''});
-  save();sel=dkey(n).slice(0,7);render();
-  if(o&&D.S.ask)openProj(dkey(n));
+  save();sel=(o?o.date:dkey(n)).slice(0,7);render();
+  if(o&&D.S.ask)openProj(o.date);
 };
 
 /* ---- بيانات الشهر ---- */
@@ -716,7 +716,7 @@ $('mb').addEventListener('click',e=>{
     const work=D.S.rem&&!D.S.off.includes(n.getDay())&&!D.holidays.includes(d)&&!D.leaves.includes(d);
     if(work){
       const ma=mins(D.S.rma||'10:00'),pm=mins(D.S.rmp||'18:00'),today=D.recs.filter(r=>r.date===d);
-      if(!today.length&&now>=ma&&now<ma+240){k='am';txt='☀️ نسيت تسجّل حضورك؟';title='صباح الخير ☀️';body='لسه ما سجّلتش حضورك اليوم'}
+      if(!today.length&&!openRec()&&now>=ma&&now<ma+240){k='am';txt='☀️ نسيت تسجّل حضورك؟';title='صباح الخير ☀️';body='لسه ما سجّلتش حضورك اليوم'}
       else if(today.some(r=>!r.out)&&now>=pm&&now<pm+360){k='pm';txt='🌇 لا تنسَ تسجّل انصرافك';title='خلصت شغل؟ 🌇';body='لا تنسَ تسجّل انصرافك'}
     }
     if(!k){bar.style.display='none';bar.dataset.k='';return}
@@ -800,6 +800,33 @@ $('mb').addEventListener('click',e=>{
   const _rs=renderSet;renderSet=function(){_rs();decoPlist();applyTheme()};
   const _r4=render;render=function(){_r4();renderAll()};
   decoPlist();applyTheme();renderAll();
+})();
+</script>
+<script>
+(function(){
+  function ask(msg,fn){
+    $('mb').innerHTML=`<h3>تأكيد الحذف</h3><div style="margin:8px 0 14px">${esc(msg)}</div><div class="row"><button class="s" id="cfy" style="flex:1;background:var(--out);color:#fff;border-color:var(--out)">نعم، احذف</button><button class="s p" id="cfn" style="flex:1">إلغاء</button></div>`;
+    $('md2').style.display='flex';
+    $('cfn').onclick=()=>{$('md2').style.display='none'};
+    $('cfy').onclick=()=>{$('md2').style.display='none';fn()};
+  }
+  document.addEventListener('click',e=>{
+    const t=e.target.closest('[data-del],[data-pd],[data-hd],[data-ld]');
+    if(!t||t.dataset.ok)return;
+    e.stopPropagation();e.preventDefault();
+    let msg='';
+    if(t.dataset.del!==undefined){
+      const r=D.recs.find(x=>x.id===t.dataset.del);
+      msg=r?'حذف تسجيل يوم '+r.date+' ('+r.in+' ← '+(r.out||'بدون انصراف')+')؟':'حذف هذا التسجيل؟';
+    }else if(t.dataset.pd!==undefined){
+      msg='حذف المشروع "'+(D.projects[+t.dataset.pd]||'')+'" من القائمة؟';
+    }else if(t.dataset.hd!==undefined){
+      msg='حذف الإجازة الرسمية '+t.dataset.hd+'؟';
+    }else{
+      msg='حذف يوم الإجازة '+t.dataset.ld+'؟';
+    }
+    ask(msg,()=>{t.dataset.ok='1';t.click();delete t.dataset.ok});
+  },true);
 })();
 </script>
 <script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))</script>

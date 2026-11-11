@@ -21,6 +21,9 @@ window.claude={use:async()=>({save:async({filename,data})=>{
 </script>
 <title>بصمة الحضور والانصراف</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 <style>
 :root{--bg:#f5f6f8;--card:#fff;--tx:#1b1f24;--mu:#6b7280;--bd:#e3e6ea;--in:#16a34a;--out:#dc2626;--ac:#2563eb;--hl:#fff4e0;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111418;--card:#1b2026;--tx:#eef0f3;--mu:#98a1ad;--bd:#2c333b;--hl:#2a2418;color-scheme:dark}}
@@ -569,6 +572,52 @@ $('imp').onchange=e=>{
   r.readAsText(f);e.target.value='';
 };
 if(!D.S.name)askName();
+</script>
+<script>
+function toast(m){const t=document.createElement('div');t.textContent=m;t.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1b1f24;color:#fff;padding:12px 18px;border-radius:12px;z-index:99;font-size:14px;max-width:90%;text-align:center';document.body.appendChild(t);setTimeout(()=>t.remove(),3800)}
+printOut=async function(html,name){
+  if(!window.html2canvas||!window.jspdf){toast('أول مرة تحتاج إنترنت لتحميل مكتبة PDF');return}
+  toast('جاري إنشاء ملف PDF...');
+  const fr=document.createElement('iframe');
+  fr.style.cssText='position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0;background:#fff';
+  document.body.appendChild(fr);
+  try{
+    fr.srcdoc='<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><style>'+RCSS+'</style></head><body>'+html+'</body></html>';
+    await new Promise(r=>{fr.onload=r});
+    const d=fr.contentDocument;
+    fr.style.height=d.documentElement.scrollHeight+'px';
+    await new Promise(r=>setTimeout(r,250));
+    const cv=await html2canvas(d.body,{scale:2,backgroundColor:'#ffffff',width:794,windowWidth:794});
+    const {jsPDF}=window.jspdf,pdf=new jsPDF('p','mm','a4');
+    const mx=8,cw=210-2*mx,ch=297-2*mx,pxPage=Math.floor(cv.width*ch/cw);
+    let y=0,first=true;
+    while(y<cv.height){
+      const h=Math.min(pxPage,cv.height-y),pc=document.createElement('canvas');
+      pc.width=cv.width;pc.height=h;
+      pc.getContext('2d').drawImage(cv,0,y,cv.width,h,0,0,cv.width,h);
+      if(!first)pdf.addPage();first=false;
+      pdf.addImage(pc.toDataURL('image/jpeg',0.92),'JPEG',mx,mx,cw,h*cw/cv.width);
+      y+=h;
+    }
+    pdf.save(name+'.pdf');
+    toast('تم حفظ الملف في التنزيلات: '+name+'.pdf');
+  }catch(e){toast('تعذر إنشاء الملف')}
+  fr.remove();
+};
+(function(){
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+  const ob=$('bk').onclick;
+  $('bk').onclick=async()=>{await ob();D.S.lastBackup=Date.now();save()};
+  const last=+D.S.lastBackup||0;
+  if(D.recs.length&&Date.now()-last>7*864e5){
+    const b=document.createElement('div');
+    b.style.cssText='position:fixed;bottom:12px;left:12px;right:12px;z-index:60;background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:14px;padding:12px;display:flex;gap:8px;align-items:center;box-shadow:0 4px 18px rgba(0,0,0,.25)';
+    b.innerHTML='<span style="flex:1;font-size:13px">احفظ نسخة احتياطية من بياناتك في ملف على هاتفك</span><button class="s p" id="bkn">حفظ الآن</button><button class="s" id="bkx">لاحقًا</button>';
+    document.body.appendChild(b);
+    $('bkx').onclick=()=>b.remove();
+    $('bkn').onclick=async()=>{await $('bk').onclick();b.remove()};
+  }
+})();
 </script>
 <script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))</script>
 </body>

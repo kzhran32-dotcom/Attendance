@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2563eb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="البصمة">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script>
+window.__pwa=true;
+window.claude={use:async()=>({save:async({filename,data})=>{
+  const b=new Blob([data],{type:'application/octet-stream'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=filename;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);
+}})};
+</script>
+<title>بصمة الحضور والانصراف</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--tx:#1b1f24;--mu:#6b7280;--bd:#e3e6ea;--in:#16a34a;--out:#dc2626;--ac:#2563eb;--hl:#fff4e0;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111418;--card:#1b2026;--tx:#eef0f3;--mu:#98a1ad;--bd:#2c333b;--hl:#2a2418;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#111418;--card:#1b2026;--tx:#eef0f3;--mu:#98a1ad;--bd:#2c333b;--hl:#2a2418;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;padding:14px;max-width:600px;margin-inline:auto}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:16px;margin-bottom:14px}
+h1{font-size:18px;margin:0 0 4px}h3{font-size:15px;margin:0 0 8px}
+.mu{color:var(--mu);font-size:13px}
+#clock{font-size:40px;font-weight:700;text-align:center;direction:ltr;margin:6px 0}
+#date{text-align:center}
+#btn{width:100%;border:0;border-radius:16px;padding:22px;font-size:22px;font-weight:700;color:#fff;background:var(--in);margin-top:10px}
+#btn.out{background:var(--out)}
+#status{text-align:center;margin-top:10px;font-size:14px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+select,input,button.s{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:8px}
+button.s{cursor:pointer}
+button.p{background:var(--ac);color:#fff;border-color:var(--ac)}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 5px;border-bottom:1px solid var(--bd);text-align:center;white-space:nowrap}
+td input[type=time]{padding:4px;width:100px;direction:ltr}
+tr.hol{background:var(--hl)}
+tfoot td{font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.st{border:1px solid var(--bd);border-radius:12px;padding:8px;text-align:center}
+.st b{display:block;font-size:17px}.st span{font-size:12px;color:var(--mu)}
+.st.big{grid-column:1/-1;background:var(--ac);color:#fff;border-color:var(--ac)}.st.big span{color:#dbe6ff}
+.x{background:none;border:0;color:var(--out);font-size:18px;cursor:pointer}
+.chip{display:inline-flex;gap:4px;align-items:center;border:1px solid var(--bd);border-radius:20px;padding:4px 10px;margin:3px;font-size:13px}
+details summary{cursor:pointer;font-weight:600}
+#md2{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center;z-index:50}
+#mb{width:100%;max-width:600px;max-height:88vh;overflow:auto;background:var(--card);border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px))}
+.pr{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--bd)}
+.pr label{flex:1}.pr input[type=number]{width:80px}
+.tabs{display:flex;gap:6px;margin-bottom:14px}.tabs button{flex:1;padding:12px;border:1px solid var(--bd);border-radius:12px;background:var(--card);color:var(--tx);font:inherit;font-weight:600}.tabs button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+#pr{display:none}
+@media print{body>*:not(#pr){display:none!important}#pr{display:block}body{background:#fff;color:#000;padding:0;max-width:none}#pr table{font-size:11px;margin-bottom:14px}#pr th,#pr td{border:1px solid #999;color:#000}}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>بصمة الحضور والانصراف</h1>
+  <div id="date" class="mu"></div>
+  <div id="clock"></div>
+  <button id="btn">تسجيل الحضور</button>
+  <div id="status" class="mu"></div>
+</div>
+
+<div class="card"><select id="month"></select></div>
+<div class="tabs"><button id="t1" class="on">الساعات والمشاريع</button><button id="t2">الحساب المادي 🔒</button><button id="t3">⚙️ الإعدادات</button></div>
+<div id="tabF" style="display:none">
+<div class="card">
+  <div class="row" style="justify-content:space-between"><h3 style="margin:0">الحساب المادي</h3><span><button class="s p" id="xlF">Excel</button> <button class="s" id="prtF">طباعة</button></span></div>
+  <div class="row" style="margin:10px 0"><span>المرتب الأساسي:</span><input type="number" id="salary" step="0.01" min="0" style="width:110px"><span>ضريبة كسب العمل %:</span><input type="number" id="tax" step="0.01" min="0" style="width:70px"><span>عجز مسموح (ساعات/شهر):</span><input type="number" id="allow" step="0.5" min="0" style="width:70px"></div>
+  <h3>التفصيل اليومي</h3>
+  <div class="tw"><table><thead><tr><th>التاريخ</th><th>اليوم</th><th>الإجمالي</th><th>عادي</th><th>إضافي ×1</th><th>إضافي ×1.5</th><th>عطلة ×2</th><th>عجز</th><th>المحتسب</th></tr></thead><tbody id="daily"></tbody><tfoot id="dtot"></tfoot></table></div>
+  <h3 style="margin-top:18px">كشف الحساب</h3>
+  <div class="grid" id="stats"></div>
+</div>
+
+</div>
+<div id="tabH">
+<div class="card">
+  <div class="row" style="justify-content:space-between"><h3 style="margin:0">ساعات الشهر الفعلية</h3><span><button class="s p" id="xl">Excel</button> <button class="s" id="prt">طباعة</button></span></div>
+  <div class="grid" id="statsH"></div>
+  <h3>الساعات اليومية</h3>
+  <div class="tw"><table><thead><tr><th>التاريخ</th><th>اليوم</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>مشاريع</th></tr></thead><tbody id="dailyH"></tbody><tfoot id="dtotH"></tfoot></table></div>
+</div>
+<div class="card">
+  <h3>ساعات المشاريع</h3>
+  <div class="tw"><table><thead><tr><th>المشروع</th><th>الساعات</th></tr></thead><tbody id="projrep"></tbody></table></div>
+</div>
+
+<div class="card">
+  <div class="row" style="justify-content:space-between"><h3 style="margin:0">رصيد الإجازات السنوي</h3><select id="lvy"></select></div>
+  <div class="grid" id="lvStats"></div>
+  <div class="row"><span>الرصيد السنوي (أيام):</span><input type="number" id="quota" min="0" style="width:80px"></div>
+  <div style="font-weight:600;margin:12px 0 8px">تسجيل إجازة (من - إلى)</div>
+  <div class="row"><input type="date" id="lf"><input type="date" id="lt"><button class="s p" id="lva">إضافة</button></div>
+  <div class="mu" style="margin:6px 0">العطلات الأسبوعية والإجازات الرسمية لا تُحسب من الرصيد. اترك "إلى" فارغًا ليوم واحد.</div>
+  <div id="lvl"></div>
+</div>
+
+<div class="card">
+  <details><summary>سجلات الحضور (تعديل / حذف)</summary>
+  <div class="tw" style="margin-top:8px"><table><thead><tr><th>التاريخ</th><th>حضور</th><th>انصراف</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+  <div style="font-weight:600;margin:12px 0 8px">إضافة يدوية</div>
+  <div class="row"><input type="date" id="md"><input type="time" id="mi"><input type="time" id="mo"><button class="s p" id="ma">إضافة</button></div>
+  </details>
+</div>
+</div>
+
+<div id="tabS" style="display:none"><div class="card">
+  <details open><summary>الإعدادات</summary>
+  <div style="margin-top:10px">
+    <div class="row"><span>الاسم (يظهر في الكشف):</span><input type="text" id="ename" style="width:150px"> <span>ساعات العمل العادية:</span><input type="number" id="std" step="0.5" min="1" style="width:70px"></div>
+    <div class="mu" style="margin:8px 0">القاعدة: أول ساعتين إضافي ×1، وبعدهما ×1.5. وفي العطلات كل الساعات ×2. العجز (النقص عن ساعات اليوم العادية) يُخصم بسعر ×1 بعد المسموح الشهري.</div>
+    <div style="font-weight:600;margin:10px 0 4px">أيام العطلة الأسبوعية</div><div id="offs"></div>
+    <div style="font-weight:600;margin:10px 0 4px">الإجازات الرسمية</div>
+    <div class="row"><input type="date" id="hd"><button class="s p" id="ha">إضافة</button></div><div id="hols"></div>
+    <div style="font-weight:600;margin:10px 0 4px">المشاريع</div>
+    <div class="row"><input type="text" id="pn" placeholder="اسم مشروع جديد"><button class="s p" id="pa">إضافة</button></div><div id="plist"></div>
+    <div style="font-weight:600;margin:12px 0 4px">نسخة احتياطية</div><div class="row"><button class="s p" id="bk">تصدير البيانات</button><label class="s" style="cursor:pointer">استيراد<input type="file" id="imp" accept=".json,application/json" style="display:none"></label></div><div class="mu">لنقل بياناتك إلى جهاز أو نسخة أخرى من البرنامج.</div>
+    <label class="row" style="margin-top:10px"><input type="checkbox" id="ask"> اسألني عن المشاريع عند تسجيل الانصراف</label>
+  </div></details>
+</div></div>
+
+<div id="md2"><div id="mb"></div></div>
+<div id="pr"></div>
+
+<script>
+const DAYS=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const MONTHS=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const KEY='attendance_v2';
+let D={recs:[],holidays:[],projects:[],alloc:{},leaves:[],S:{ask:true,rate:'',std:8,off:[5,6]}};
+try{
+  const s=localStorage.getItem(KEY);
+  if(s){D=Object.assign(D,JSON.parse(s))}
+  else{const o=localStorage.getItem('attendance_v1');if(o)D.recs=JSON.parse(o)||[]}
+}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}}
+const $=id=>document.getElementById(id);
+const p2=n=>String(n).padStart(2,'0');
+const dkey=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
+const tkey=d=>p2(d.getHours())+':'+p2(d.getMinutes());
+const mins=t=>{const a=t.split(':');return +a[0]*60+ +a[1]};
+const dur=r=>r.out?Math.max(0,mins(r.out)-mins(r.in)):0;
+const hm=m=>Math.floor(m/60)+':'+p2(Math.round(m%60));
+const dec=m=>Math.round(m/60*100)/100;
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const wdOf=d=>{const a=d.split('-');return new Date(+a[0],+a[1]-1,+a[2]).getDay()};
+let sel=dkey(new Date()).slice(0,7);
+
+/* ---- حساب الأجر ---- */
+function dayType(d){
+  if(D.holidays.includes(d))return 'إجازة رسمية';
+  if(D.S.off.includes(wdOf(d)))return 'عطلة أسبوعية';
+  return 'عادي';
+}
+function calc(m,type){
+  const std=Math.round((+D.S.std||8)*60);
+  if(type!=='عادي')return {n:0,o1:0,o2:0,h:m,sf:0,paid:m*2};
+  const n=Math.min(m,std),o1=Math.min(Math.max(m-std,0),120),o2=Math.max(m-std-120,0);
+  return {n,o1,o2,h:0,sf:Math.max(0,std-m),paid:n+o1+o2*1.5};
+}
+
+/* ---- الساعة والبصمة ---- */
+function tick(){
+  const n=new Date();
+  $('clock').textContent=p2(n.getHours())+':'+p2(n.getMinutes())+':'+p2(n.getSeconds());
+  $('date').textContent=DAYS[n.getDay()]+' '+n.getDate()+' '+MONTHS[n.getMonth()]+' '+n.getFullYear();
+}
+setInterval(tick,1000);tick();
+const openRec=()=>D.recs.find(r=>r.date===dkey(new Date())&&!r.out);
+function btn(){
+  const o=openRec();
+  $('btn').textContent=o?'تسجيل الانصراف':'تسجيل الحضور';
+  $('btn').className=o?'out':'';
+  $('status').textContent=o?'حضرت الساعة '+o.in:'لم تسجل حضورًا بعد';
+}
+$('btn').onclick=()=>{
+  const n=new Date(),o=openRec();
+  if(o){o.out=tkey(n)}else D.recs.push({id:uid(),date:dkey(n),in:tkey(n),out:''});
+  save();sel=dkey(n).slice(0,7);render();
+  if(o&&D.S.ask)openProj(dkey(n));
+};
+
+/* ---- بيانات الشهر ---- */
+const monthRecs=()=>D.recs.filter(r=>r.date.slice(0,7)===sel).sort((a,b)=>(a.date+a.in).localeCompare(b.date+b.in));
+function monthDays(){
+  const m={};
+  monthRecs().forEach(r=>{if(r.out)m[r.date]=(m[r.date]||0)+dur(r)});
+  return Object.keys(m).sort().map(d=>{const t=dayType(d);return Object.assign({d,m:m[d],t},calc(m[d],t))});
+}
+function projTotals(){
+  const t={};
+  Object.keys(D.alloc).filter(d=>d.slice(0,7)===sel&&dayMins(d)>0).forEach(d=>{
+    for(const k in D.alloc[d])t[k]=(t[k]||0)+D.alloc[d][k];
+  });
+  return t;
+}
+function allow(){return D.S.allow===undefined||D.S.allow===''?4:+D.S.allow}
+function fin(s){const free=Math.min(s.sf,allow()*60);return {free,ded:s.sf-free,net:s.paid+free}}
+function sums(days){
+  const s={m:0,n:0,o1:0,o2:0,h:0,sf:0,paid:0};
+  days.forEach(x=>{for(const k in s)s[k]+=x[k]});return s;
+}
+
+/* ---- العرض ---- */
+function fitAll(){
+  let ch=false;
+  Object.keys(D.alloc).forEach(d=>{
+    const t=dayMins(d),a=D.alloc[d],sm=Object.values(a).reduce((x,y)=>x+y,0);
+    if(t===0){delete D.alloc[d];ch=true}
+    else if(sm>t){const f=t/sm;for(const k in a)a[k]=Math.floor(a[k]*f);ch=true}
+  });
+  if(ch)save();
+}
+function render(){
+  fitAll();btn();
+  const set=new Set(D.recs.map(r=>r.date.slice(0,7)));set.add(dkey(new Date()).slice(0,7));set.add(sel);
+  $('month').innerHTML=[...set].sort().reverse().map(m=>{const a=m.split('-');return `<option value="${m}" ${m===sel?'selected':''}>${MONTHS[+a[1]-1]} ${a[0]}</option>`}).join('');
+  const days=monthDays(),s=sums(days);
+  const f=fin(s),money=D.S.rate?`<div class="st big"><b>${(f.net/60*D.S.rate).toFixed(2)}</b><span>المبلغ المستحق (${dec(f.net)} ساعة × ${D.S.rate})</span></div>`:'<div class="st big"><span>اكتب سعر الساعة لحساب المبلغ المستحق</span></div>';
+  $('stats').innerHTML=
+   `${money}<div class="st" style="grid-column:1/-1"><b>${dec(f.net)} ساعة</b><span>الصافي المحتسب بعد العجز (${days.length} يوم عمل)</span></div>
+    <div class="st"><b>${hm(s.m)}</b><span>إجمالي الفعلي</span></div>
+    <div class="st"><b>${hm(s.n)}</b><span>ساعات عادية</span></div>
+    <div class="st"><b>${hm(s.o1)}</b><span>إضافي ×1</span></div>
+    <div class="st"><b>${hm(s.o2)}</b><span>إضافي ×1.5</span></div>
+    <div class="st"><b>${hm(s.h)}</b><span>عطلات ×2</span></div>
+    <div class="st"><b>${hm(s.sf)}</b><span>العجز</span></div><div class="st"><b>${hm(f.free)}</b><span>مسموح بدون خصم</span></div><div class="st"><b>${hm(f.ded)}</b><span>عجز مخصوم</span></div>
+    <div class="st"><b>${dec(s.paid)}</b><span>المحتسب قبل العجز</span></div>`;
+  const pt0=projTotals(),al0=Object.values(pt0).reduce((a,x)=>a+x,0);
+  $('statsH').innerHTML=`<div class="st big"><b>${hm(s.m)} (${dec(s.m)} ساعة)</b><span>إجمالي ساعات الشهر الفعلية (${days.length} يوم) بدون أي إضافات</span></div><div class="st"><b>${hm(al0)}</b><span>موزّع على مشاريع</span></div><div class="st"><b>${hm(Math.max(0,s.m-al0))}</b><span>غير موزّع</span></div>`;
+  $('daily').innerHTML=days.map(x=>{
+    const a=D.alloc[x.d],c=a?Object.keys(a).length:0;
+    return `<tr class="${x.t!=='عادي'?'hol':''}"><td>${x.d.slice(8)}/${x.d.slice(5,7)}</td><td>${DAYS[wdOf(x.d)]}${x.t==='إجازة رسمية'?' 🎉':''}</td><td>${hm(x.m)}</td><td>${x.n?hm(x.n):'-'}</td><td>${x.o1?hm(x.o1):'-'}</td><td>${x.o2?hm(x.o2):'-'}</td><td>${x.h?hm(x.h):'-'}</td><td>${x.sf?hm(x.sf):'-'}</td><td><b>${dec(x.paid)}</b></td></tr>`;
+  }).join('')||'<tr><td colspan="8" class="mu">لا توجد تسجيلات مكتملة في هذا الشهر</td></tr>';
+  $('dtot').innerHTML=days.length?`<tr><td colspan="2">الإجمالي</td><td>${hm(s.m)}</td><td>${hm(s.n)}</td><td>${hm(s.o1)}</td><td>${hm(s.o2)}</td><td>${hm(s.h)}</td><td>${hm(s.sf)}</td><td>${dec(s.paid)}</td></tr>`:'';
+  const rs=monthRecs();
+  $('dailyH').innerHTML=days.map(x=>{
+    const a=D.alloc[x.d],c=a?Object.keys(a).length:0,rr=rs.filter(r=>r.date===x.d&&r.out);
+    return `<tr><td>${x.d.slice(8)}/${x.d.slice(5,7)}</td><td>${DAYS[wdOf(x.d)]}</td><td>${rr.map(r=>r.in).join(' | ')}</td><td>${rr.map(r=>r.out).join(' | ')}</td><td><b>${hm(x.m)}</b></td><td><button class="s" data-proj="${x.d}">📁 ${c||'+'}</button></td></tr>`;
+  }).join('')||'<tr><td colspan="6" class="mu">لا توجد تسجيلات مكتملة في هذا الشهر</td></tr>';
+  $('dtotH').innerHTML=days.length?`<tr><td colspan="4">الإجمالي</td><td>${hm(s.m)}</td><td></td></tr>`:'';
+  const pt=projTotals(),pk=Object.keys(pt);
+  $('projrep').innerHTML=pk.map(k=>`<tr><td>${esc(k)}</td><td>${hm(pt[k])} (${dec(pt[k])})</td></tr>`).join('')||'<tr><td colspan="2" class="mu">لم تُسجَّل مشاريع بعد</td></tr>';
+  $('rows').innerHTML=monthRecs().map(r=>`<tr><td>${r.date.slice(8)}/${r.date.slice(5,7)}</td>
+    <td><input type="time" value="${r.in}" data-id="${r.id}" data-f="in"></td>
+    <td><input type="time" value="${r.out}" data-id="${r.id}" data-f="out"></td>
+    <td><button class="x" data-del="${r.id}">✕</button></td></tr>`).join('')||'<tr><td colspan="4" class="mu">لا توجد سجلات</td></tr>';
+}
+$('month').onchange=e=>{sel=e.target.value;render()};
+$('rows').addEventListener('change',e=>{
+  const t=e.target;if(!t.dataset.id)return;
+  const r=D.recs.find(x=>x.id===t.dataset.id);if(!r)return;
+  r[t.dataset.f]=t.value;if(!r.in)r.in='00:00';if(dayMins(r.date)===0)delete D.alloc[r.date];save();render();
+});
+$('rows').addEventListener('click',e=>{
+  const id=e.target.dataset.del;if(!id)return;
+  const dl=D.recs.find(r=>r.id===id);D.recs=D.recs.filter(r=>r.id!==id);if(dl&&dayMins(dl.date)===0)delete D.alloc[dl.date];save();render();
+});
+$('dailyH').addEventListener('click',e=>{const d=e.target.closest('[data-proj]');if(d)openProj(d.dataset.proj)});
+$('md').value=dkey(new Date());
+$('ma').onclick=()=>{
+  const d=$('md').value,i=$('mi').value,o=$('mo').value;if(!d||!i)return;
+  D.recs.push({id:uid(),date:d,in:i,out:o||''});save();sel=d.slice(0,7);$('mi').value='';$('mo').value='';render();
+  if(o&&D.S.ask&&dayMins(d)>0)openProj(d);
+};
+
+/* ---- الإعدادات ---- */
+function renderSet(){
+  $('std').value=D.S.std;$('allow').value=allow();$('salary').value=D.S.salary||'';$('tax').value=D.S.tax||'';$('ask').checked=D.S.ask;
+  $('offs').innerHTML=DAYS.map((n,i)=>`<label class="chip"><input type="checkbox" data-off="${i}" ${D.S.off.includes(i)?'checked':''}>${n}</label>`).join('');
+  $('hols').innerHTML=[...D.holidays].sort().map(h=>`<span class="chip">${h}<button class="x" style="font-size:14px" data-hd="${h}">✕</button></span>`).join('');
+  $('plist').innerHTML=D.projects.map((p,i)=>`<span class="chip">${esc(p)}<button class="x" style="font-size:14px" data-pd="${i}">✕</button></span>`).join('')||'<span class="mu">لا توجد مشاريع</span>';
+}
+$('std').onchange=e=>{D.S.std=+e.target.value||8;save();render()};
+$('salary').onchange=e=>{D.S.salary=e.target.value;save();render()};$('tax').onchange=e=>{D.S.tax=e.target.value;save();render()};
+$('ask').onchange=e=>{D.S.ask=e.target.checked;save()};
+$('offs').addEventListener('change',e=>{
+  const i=+e.target.dataset.off;
+  D.S.off=e.target.checked?[...new Set([...D.S.off,i])]:D.S.off.filter(x=>x!==i);save();render();
+});
+$('ha').onclick=()=>{const h=$('hd').value;if(h&&!D.holidays.includes(h)){D.holidays.push(h);save();renderSet();render()}};
+$('hols').addEventListener('click',e=>{const h=e.target.dataset.hd;if(h){D.holidays=D.holidays.filter(x=>x!==h);save();renderSet();render()}});
+$('pa').onclick=()=>{const n=$('pn').value.trim();if(n&&!D.projects.includes(n)){D.projects.push(n);$('pn').value='';save();renderSet()}};
+$('plist').addEventListener('click',e=>{const i=e.target.dataset.pd;if(i!==undefined){D.projects.splice(+i,1);save();renderSet()}});
+
+/* ---- نافذة المشاريع ---- */
+let cur=null;
+function dayMins(d){return D.recs.filter(r=>r.date===d&&r.out).reduce((a,r)=>a+dur(r),0)}
+function openProj(d){
+  const ex=D.alloc[d]||{};
+  cur={d,tot:dayMins(d),v:{}};
+  for(const k in ex)cur.v[k]=dec(ex[k]);
+  drawProj();$('md2').style.display='flex';
+}
+function drawProj(){
+  const names=[...new Set([...D.projects,...Object.keys(cur.v)])];
+  const used=Object.values(cur.v).reduce((a,x)=>a+(+x||0),0);
+  $('mb').innerHTML=`<h3>مشاريع يوم ${cur.d} (${hm(cur.tot)} ساعة)</h3>
+  ${names.map((n,i)=>`<div class="pr"><label><input type="checkbox" data-pc="${i}" ${n in cur.v?'checked':''}> ${esc(n)}</label>${n in cur.v?`<input type="number" step="0.25" min="0" value="${cur.v[n]}" data-ph="${i}"> <span class="mu">س</span>`:''}</div>`).join('')||'<div class="mu">أضف مشروعًا أولًا</div>'}
+  <div class="row" style="margin-top:10px"><input type="text" id="np" placeholder="مشروع جديد" style="flex:1"><button class="s p" id="npa">إضافة</button></div>
+  <div class="mu" style="margin:10px 0;${used>dec(cur.tot)+0.02?'color:var(--out)':''}">الموزع: ${Math.round(used*100)/100} من ${dec(cur.tot)} ساعة</div><div id="perr" style="color:var(--out);font-size:13px;margin-bottom:8px"></div>
+  <div class="row"><button class="s p" id="psv" style="flex:1">حفظ</button><button class="s" id="psk">تخطي</button></div>`;
+  cur.names=names;
+}
+function splitEq(){
+  const k=Object.keys(cur.v);if(!k.length)return;
+  const e=Math.floor(cur.tot/k.length/60*100)/100;k.forEach(x=>cur.v[x]=e);
+}
+$('mb').addEventListener('change',e=>{
+  const t=e.target;if(!cur)return;
+  if(t.dataset.pc!==undefined){
+    const n=cur.names[+t.dataset.pc];
+    if(t.checked)cur.v[n]=0;else delete cur.v[n];
+    splitEq();drawProj();
+  }else if(t.dataset.ph!==undefined){
+    cur.v[cur.names[+t.dataset.ph]]=+t.value||0;drawProj();
+  }
+});
+$('mb').addEventListener('click',e=>{
+  const id=e.target.id;if(!cur)return;
+  if(id==='npa'){
+    const n=$('np').value.trim();
+    if(n){if(!D.projects.includes(n))D.projects.push(n);cur.v[n]=0;splitEq();save();renderSet();drawProj()}
+  }else if(id==='psv'){
+    const o={};let sm=0;for(const k in cur.v){const m=Math.round((+cur.v[k]||0)*60);if(m>0){o[k]=m;sm+=m}}
+    if(sm>cur.tot+1){$('perr').textContent='مجموع ساعات المشاريع ('+hm(sm)+') أكبر من ساعات العمل ('+hm(cur.tot)+'). عدّل الأرقام.';return}
+    if(Object.keys(o).length)D.alloc[cur.d]=o;else delete D.alloc[cur.d];
+    save();closeProj();render();
+  }else if(id==='psk')closeProj();
+});
+function closeProj(){cur=null;$('md2').style.display='none'}
+
+/* ---- التصدير والطباعة ---- */
+function ym(){const a=sel.split('-');return MONTHS[+a[1]-1]+' '+a[0]}
+function projText(d){const a=D.alloc[d];return a?Object.keys(a).map(k=>k+': '+dec(a[k])).join('، '):''}
+$('xlF').onclick=async()=>{
+  const days=monthDays();
+  if(!days.length){alert('لا توجد بيانات');return}
+  const s=sums(days);
+  const A=[['الحساب المادي - '+ym()],[],['التاريخ','اليوم','النوع','الإجمالي الفعلي','ساعات عادية','إضافي ×1','إضافي ×1.5','ساعات عطلة ×2','عجز','الساعات المحتسبة']];
+  days.forEach(x=>A.push([x.d,DAYS[wdOf(x.d)],x.t,dec(x.m),dec(x.n),dec(x.o1),dec(x.o2),dec(x.h),dec(x.sf),dec(x.paid)]));
+  const f=fin(s);A.push([],['','','الإجمالي',dec(s.m),dec(s.n),dec(s.o1),dec(s.o2),dec(s.h),dec(s.sf),dec(s.paid)],['','','عجز مسموح بدون خصم','','','','','','',dec(f.free)],['','','عجز مخصوم','','','','','','',dec(f.ded)],['','','الصافي المحتسب','','','','','','',dec(f.net)]);
+  if(D.S.rate)A.push(['','','سعر الساعة',+D.S.rate,'المبلغ',+(f.net/60*D.S.rate).toFixed(2)]);
+  const ws=XLSX.utils.aoa_to_sheet(A);
+  ws['!cols']=[{wch:12},{wch:10},{wch:13},{wch:13},{wch:12},{wch:10},{wch:10},{wch:14},{wch:15},{wch:40}];
+  const pt=projTotals(),B=[['المشروع','الساعات'],...Object.keys(pt).map(k=>[k,dec(pt[k])])];
+  B.push(['الإجمالي',dec(Object.values(pt).reduce((a,x)=>a+x,0))]);
+  const ws2=XLSX.utils.aoa_to_sheet(B);ws2['!cols']=[{wch:30},{wch:12}];
+  const wb=XLSX.utils.book_new();wb.Workbook={Views:[{RTL:true}]};
+  XLSX.utils.book_append_sheet(wb,ws,'التفصيل اليومي');
+  
+  const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  try{
+    const dl=await claude.use('downloads');
+    if(!dl){alert('التنزيل غير متاح هنا، استخدم زر الطباعة');return}
+    await dl.save({filename:'finance-'+sel+'.xlsx',data:buf});
+  }catch(e){if(!e||e.code!=='declined')alert('تعذر الحفظ')}
+};
+$('prtF').onclick=()=>{
+  const days=monthDays(),s=sums(days),pt=projTotals();
+  $('pr').innerHTML=`<h2 style="text-align:center">الحساب المادي - ${ym()}</h2>
+  <table><thead><tr><th>التاريخ</th><th>اليوم</th><th>النوع</th><th>الإجمالي</th><th>عادي</th><th>إضافي ×1</th><th>إضافي ×1.5</th><th>عطلة ×2</th><th>عجز</th><th>المحتسب</th></tr></thead><tbody>
+  ${days.map(x=>`<tr><td>${x.d}</td><td>${DAYS[wdOf(x.d)]}</td><td>${x.t}</td><td>${hm(x.m)}</td><td>${hm(x.n)}</td><td>${hm(x.o1)}</td><td>${hm(x.o2)}</td><td>${hm(x.h)}</td><td>${x.sf?hm(x.sf):'-'}</td><td>${dec(x.paid)}</td></tr>`).join('')}
+  <tr><td colspan="3"><b>الإجمالي</b></td><td><b>${hm(s.m)}</b></td><td><b>${hm(s.n)}</b></td><td><b>${hm(s.o1)}</b></td><td><b>${hm(s.o2)}</b></td><td><b>${hm(s.h)}</b></td><td><b>${hm(s.sf)}</b></td><td><b>${dec(s.paid)}</b></td></tr></tbody></table><p>عجز مسموح بدون خصم: ${hm(fin(s).free)} — عجز مخصوم: ${hm(fin(s).ded)} — <b>الصافي المحتسب: ${dec(fin(s).net)} ساعة</b>${D.S.rate?' — المبلغ: '+(fin(s).net/60*D.S.rate).toFixed(2):''}</p>
+  ${0&&Object.keys(pt).length?`<h3>ساعات المشاريع</h3><table><thead><tr><th>المشروع</th><th>الساعات</th></tr></thead><tbody>${Object.keys(pt).map(k=>`<tr><td>${esc(k)}</td><td>${dec(pt[k])}</td></tr>`).join('')}</tbody></table>`:''}`;
+  printOut($('pr').innerHTML,'finance-'+sel);
+};
+function leaveInfo(){
+  const y=sel.slice(0,4),L=D.leaves.filter(d=>d.slice(0,4)===y).sort(),q=(D.S.quota===undefined||D.S.quota==='')?null:+D.S.quota;
+  return {y,L,q,inM:L.filter(d=>d.slice(0,7)===sel),left:q===null?null:q-L.length};
+}
+function leaveSheet(){
+  const i=leaveInfo(),A=[['الإجازات - '+i.y],[],['أيام الإجازة في '+ym(),i.inM.length],['إجمالي إجازات السنة منذ يناير',i.L.length]];
+  if(i.q!==null)A.push(['الرصيد السنوي',i.q],['المتبقي',i.left]);
+  A.push([],['التاريخ','اليوم']);i.L.forEach(d=>A.push([d,DAYS[wdOf(d)]]));
+  const ws=XLSX.utils.aoa_to_sheet(A);ws['!cols']=[{wch:32},{wch:14}];return ws;
+}
+function leaveHtml(){
+  const i=leaveInfo();
+  return `<h3>الإجازات</h3><table><tbody><tr><td>إجازات ${ym()}</td><td>${i.inM.length} يوم</td></tr><tr><td>إجمالي إجازات ${i.y} منذ يناير</td><td>${i.L.length} يوم</td></tr>${i.q!==null?`<tr><td>الرصيد السنوي / المتبقي</td><td>${i.q} / ${i.left}</td></tr>`:''}</tbody></table>${i.inM.length?`<p>أيام إجازة الشهر: ${i.inM.map(d=>d.slice(8)+'/'+d.slice(5,7)).join('، ')}</p>`:''}`;
+}
+$('allow').onchange=e=>{D.S.allow=e.target.value===''?4:+e.target.value;save();render()};
+async function printOut(html,name){
+  const doc='<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+name+'</title><style>'+RCSS+'</style></head><body>'+html+'<script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script></body></html>';
+  try{
+    const dl=await claude.use('downloads');
+    if(!dl){alert('الحفظ غير متاح هنا');return}
+    if(window.__pwa){const w=window.open('','_blank');if(w){w.document.open();w.document.write(doc);w.document.close();return}}
+    await dl.save({filename:name+'.html',data:doc});
+  }catch(e){if(!e||e.code!=='declined')alert('تعذر الحفظ')}
+}
+function tab(n){$('tabH').style.display=n===1?'':'none';$('tabF').style.display=n===2?'':'none';$('tabS').style.display=n===3?'':'none';$('t1').className=n===1?'on':'';$('t2').className=n===2?'on':'';$('t3').className=n===3?'on':''}
+$('t1').onclick=()=>tab(1);$('t2').onclick=()=>tab(2);$('t3').onclick=()=>tab(3);
+$('xl').onclick=async()=>{
+  const days=monthDays();
+  if(!days.length){alert('لا توجد بيانات');return}
+  const rs=monthRecs(),s=sums(days),pt=projTotals(),al=Object.values(pt).reduce((a,x)=>a+x,0);
+  const B=[['ساعات المشاريع - '+ym()],[],['المشروع','الساعات (س:د)','الساعات (عشري)'],...Object.keys(pt).map(k=>[k,hm(pt[k]),dec(pt[k])]),[],['إجمالي المشاريع',hm(al),dec(al)],['إجمالي ساعات الشهر',hm(s.m),dec(s.m)]];
+  const ws2=XLSX.utils.aoa_to_sheet(B);ws2['!cols']=[{wch:30},{wch:16},{wch:16}];
+  const A=[['الساعات اليومية - '+ym()],[],['التاريخ','اليوم','الحضور','الانصراف','الساعات (س:د)','الساعات (عشري)','المشاريع']];
+  days.forEach(x=>{const rr=rs.filter(r=>r.date===x.d&&r.out);A.push([x.d,DAYS[wdOf(x.d)],rr.map(r=>r.in).join(' | '),rr.map(r=>r.out).join(' | '),hm(x.m),dec(x.m),projText(x.d)])});
+  A.push([],['','','','الإجمالي',hm(s.m),dec(s.m)]);
+  const ws=XLSX.utils.aoa_to_sheet(A);ws['!cols']=[{wch:12},{wch:10},{wch:14},{wch:14},{wch:14},{wch:14},{wch:40}];
+  const wb=XLSX.utils.book_new();wb.Workbook={Views:[{RTL:true}]};
+  XLSX.utils.book_append_sheet(wb,ws2,'ملخص المشاريع');
+  XLSX.utils.book_append_sheet(wb,ws,'الساعات اليومية');
+  XLSX.utils.book_append_sheet(wb,leaveSheet(),'الإجازات');
+  const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  try{
+    const dl=await claude.use('downloads');
+    if(!dl){alert('التنزيل غير متاح هنا، استخدم زر الطباعة');return}
+    await dl.save({filename:'hours-'+sel+'.xlsx',data:buf});
+  }catch(e){if(!e||e.code!=='declined')alert('تعذر الحفظ')}
+};
+$('prt').onclick=()=>{
+  const days=monthDays(),s=sums(days),pt=projTotals(),rs=monthRecs(),al=Object.values(pt).reduce((a,x)=>a+x,0);
+  $('pr').innerHTML=`<h2 style="text-align:center">ساعات العمل - ${ym()}</h2>
+  <table><thead><tr><th>المشروع</th><th>الساعات (س:د)</th><th>عشري</th></tr></thead><tbody>${Object.keys(pt).map(k=>`<tr><td>${esc(k)}</td><td>${hm(pt[k])}</td><td>${dec(pt[k])}</td></tr>`).join('')}<tr><td><b>إجمالي المشاريع</b></td><td><b>${hm(al)}</b></td><td><b>${dec(al)}</b></td></tr><tr><td><b>إجمالي ساعات الشهر</b></td><td><b>${hm(s.m)}</b></td><td><b>${dec(s.m)}</b></td></tr></tbody></table>
+  <table><thead><tr><th>التاريخ</th><th>اليوم</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th></tr></thead><tbody>${days.map(x=>{const rr=rs.filter(r=>r.date===x.d&&r.out);return `<tr><td>${x.d}</td><td>${DAYS[wdOf(x.d)]}</td><td>${rr.map(r=>r.in).join(' | ')}</td><td>${rr.map(r=>r.out).join(' | ')}</td><td>${hm(x.m)}</td></tr>`}).join('')}</tbody></table>${leaveHtml()}`;
+  printOut($('pr').innerHTML,'hours-'+sel);
+};
+let lvYear=String(new Date().getFullYear());
+function renderLv(){
+  const cy=String(new Date().getFullYear()),ys=new Set(D.leaves.map(d=>d.slice(0,4)));ys.add(lvYear);ys.add(cy);
+  $('lvy').innerHTML=[...ys].sort().reverse().map(y=>`<option ${y===lvYear?'selected':''}>${y}</option>`).join('');
+  const L=D.leaves.filter(d=>d.slice(0,4)===lvYear).sort(),q=(D.S.quota===undefined||D.S.quota==='')?null:+D.S.quota;
+  $('lvStats').innerHTML=`<div class="st"><b>${L.length}</b><span>أيام مأخوذة في ${lvYear}</span></div>`+(q!==null?`<div class="st"><b>${q}</b><span>الرصيد السنوي</span></div><div class="st"><b>${q-L.length}</b><span>المتبقي</span></div>`:'');
+  $('lvl').innerHTML=L.map(d=>`<span class="chip">${d.slice(8)}/${d.slice(5,7)} ${DAYS[wdOf(d)]}<button class="x" style="font-size:14px" data-ld="${d}">✕</button></span>`).join('')||'<span class="mu">لا توجد إجازات مسجلة</span>';
+  $('quota').value=q===null?'':q;
+}
+$('lf').value=dkey(new Date());
+$('lvy').onchange=e=>{lvYear=e.target.value;renderLv()};
+$('quota').onchange=e=>{D.S.quota=e.target.value;save();renderLv()};
+$('lva').onclick=()=>{
+  const a=$('lf').value,b=$('lt').value||a;if(!a)return;
+  const d=new Date(a+'T00:00:00'),e=new Date(b+'T00:00:00');if(e<d)return;
+  for(let n=0;d<=e&&n<400;n++,d.setDate(d.getDate()+1)){
+    const k=dkey(d);
+    if(D.S.off.includes(d.getDay())||D.holidays.includes(k)||D.leaves.includes(k))continue;
+    D.leaves.push(k);
+  }
+  lvYear=a.slice(0,4);$('lt').value='';save();renderLv();
+};
+$('lvl').addEventListener('click',e=>{const d=e.target.dataset.ld;if(d){D.leaves=D.leaves.filter(x=>x!==d);save();renderLv()}});
+const RCSS=`@page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:"Segoe UI",Tahoma,Arial,sans-serif;color:#1b1f24;margin:0;padding:18px;font-size:13px}.hd{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1d4ed8;padding-bottom:10px;margin-bottom:14px}.hd h1{margin:0 0 4px;font-size:22px;color:#1d4ed8}.hd .m{font-size:15px;font-weight:700}.hd .s{color:#6b7280;font-size:12px}.kp{display:flex;gap:8px;margin-bottom:14px}.kp>div{flex:1;border:1px solid #d5dae1;border-radius:8px;padding:8px;text-align:center}.kp b{display:block;font-size:17px;color:#1d4ed8}.kp span{font-size:11px;color:#6b7280}.kp .main{background:#1d4ed8;border-color:#1d4ed8}.kp .main b,.kp .main span{color:#fff}h3{font-size:14px;margin:16px 0 6px;color:#1d4ed8;border-right:4px solid #1d4ed8;padding-right:8px}table{width:100%;border-collapse:collapse;margin-bottom:6px;font-size:12px}th{background:#1d4ed8;color:#fff;padding:7px 4px;font-weight:600}td{padding:6px 4px;border-bottom:1px solid #e3e6ea;text-align:center}tbody tr:nth-child(even) td{background:#f6f8fb}tr.h td{background:#fde7b0!important}tr.l td{background:#cfeedd!important}tfoot td{font-weight:700;background:#e8eefc!important;border-top:2px solid #1d4ed8}.sg{display:flex;justify-content:space-between;margin-top:46px}.sg div{width:40%;text-align:center;border-top:1px solid #333;padding-top:6px;font-size:12px}.ft{margin-top:18px;color:#9aa1ab;font-size:10px;text-align:center}table,tr{page-break-inside:avoid}`;
+const kp=(v,l,c)=>`<div class="${c||''}"><b>${v}</b><span>${l}</span></div>`;
+const rptHead=t=>`<div class="hd"><div><h1>${t}</h1><div class="s">${D.S.name?esc(D.S.name):''}</div></div><div style="text-align:left"><div class="m">${ym()}</div><div class="s">تاريخ الإصدار: ${dkey(new Date())}</div></div></div>`;
+const rptFoot=()=>`<div class="sg"><div>توقيع الموظف</div><div>اعتماد المدير</div></div><div class="ft">تم إنشاؤه بواسطة برنامج الحضور والانصراف</div>`;
+$('ename').value=D.S.name||'';
+$('ename').onchange=e=>{D.S.name=e.target.value.trim();save()};
+$('prt').onclick=()=>{
+  const days=monthDays(),s=sums(days),pt=projTotals(),rs=monthRecs(),pk=Object.keys(pt),al=pk.reduce((a,k)=>a+pt[k],0);
+  const h=rptHead('كشف ساعات العمل')
+   +`<div class="kp">${kp(hm(s.m),'إجمالي ساعات الشهر','main')}${kp(days.length,'أيام العمل')}${kp(hm(al),'موزّع على مشاريع')}${kp(leaveInfo().inM.length,'أيام إجازة')}</div>`
+   +`<h3>ساعات المشاريع</h3><table><thead><tr><th>المشروع</th><th>الساعات (س:د)</th><th>الساعات (عشري)</th></tr></thead><tbody>${pk.map(k=>`<tr><td>${esc(k)}</td><td>${hm(pt[k])}</td><td>${dec(pt[k])}</td></tr>`).join('')||'<tr><td colspan="3">لا توجد مشاريع مسجلة</td></tr>'}</tbody><tfoot><tr><td>الإجمالي</td><td>${hm(al)}</td><td>${dec(al)}</td></tr></tfoot></table>`
+   +`<h3>الحضور والانصراف اليومي</h3><table><thead><tr><th>التاريخ</th><th>اليوم</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th></tr></thead><tbody>${days.map(x=>{const rr=rs.filter(r=>r.date===x.d&&r.out);return `<tr class="${x.t!=='عادي'?'h':''}"><td>${x.d}</td><td>${DAYS[wdOf(x.d)]}</td><td>${rr.map(r=>r.in).join(' | ')}</td><td>${rr.map(r=>r.out).join(' | ')}</td><td>${hm(x.m)}</td></tr>`}).join('')}</tbody><tfoot><tr><td colspan="4">الإجمالي</td><td>${hm(s.m)}</td></tr></tfoot></table>`
+   +leaveHtml()+rptFoot();
+  printOut(h,'hours-'+sel);
+};
+$('prtF').onclick=()=>{
+  const days=monthDays(),s=sums(days),f=fin(s),r=+D.S.rate||0;
+  const h=rptHead('كشف الحساب المادي')
+   +`<div class="kp">${r?kp((f.net/60*r).toFixed(2),'المبلغ المستحق','main'):kp(dec(f.net),'الصافي المحتسب (ساعة)','main')}${kp(dec(f.net),'الصافي بالساعات')}${kp(hm(f.ded),'عجز مخصوم')}${kp(days.length,'أيام العمل')}</div>`
+   +`<h3>التفصيل اليومي</h3><table><thead><tr><th>التاريخ</th><th>اليوم</th><th>النوع</th><th>الفعلي</th><th>عادي</th><th>إضافي ×1</th><th>إضافي ×1.5</th><th>عطلة ×2</th><th>عجز</th><th>المحتسب</th></tr></thead><tbody>${days.map(x=>`<tr class="${x.t!=='عادي'?'h':''}"><td>${x.d.slice(5)}</td><td>${DAYS[wdOf(x.d)]}</td><td>${x.t}</td><td>${hm(x.m)}</td><td>${x.n?hm(x.n):'-'}</td><td>${x.o1?hm(x.o1):'-'}</td><td>${x.o2?hm(x.o2):'-'}</td><td>${x.h?hm(x.h):'-'}</td><td>${x.sf?hm(x.sf):'-'}</td><td>${dec(x.paid)}</td></tr>`).join('')}</tbody><tfoot><tr><td colspan="3">الإجمالي</td><td>${hm(s.m)}</td><td>${hm(s.n)}</td><td>${hm(s.o1)}</td><td>${hm(s.o2)}</td><td>${hm(s.h)}</td><td>${hm(s.sf)}</td><td>${dec(s.paid)}</td></tr></tfoot></table>`
+   +`<h3>ملخص الحساب</h3><table><tbody><tr><td>الساعات المحتسبة قبل العجز</td><td>${dec(s.paid)}</td></tr><tr><td>إجمالي العجز</td><td>${hm(s.sf)}</td></tr><tr><td>عجز مسموح بدون خصم</td><td>${hm(f.free)}</td></tr><tr><td>عجز مخصوم</td><td>${hm(f.ded)}</td></tr></tbody><tfoot><tr><td>الصافي المحتسب (ساعة)</td><td>${dec(f.net)}</td></tr>${r?`<tr><td>سعر الساعة: ${r} — المبلغ المستحق</td><td>${(f.net/60*r).toFixed(2)}</td></tr>`:''}</tfoot></table>`
+   +rptFoot();
+  printOut(h,'finance-'+sel);
+};
+function pay(s){
+  const sal=+D.S.salary||0,rate=sal/30/8,f=fin(s);
+  const ot1=s.o1/60*rate,ot2=s.o2/60*rate*1.5,hol=s.h/60*rate*2,otTot=ot1+ot2+hol,tax=sal*(+D.S.tax||0)/100,sfd=f.ded/60*rate;
+  return {sal,rate,ot1,ot2,hol,otTot,tax,sfd,f,net:sal+otTot-tax-sfd};
+}
+const m2=n=>n.toFixed(2);
+function payRows(p,s){
+  const r=(a,b,c)=>`<tr><td style="text-align:right">${a}</td><td>${b}</td><td>${c}</td></tr>`;
+  return r('المرتب الأساسي','',m2(p.sal))+r('سعر الساعة (المرتب ÷ 30 ÷ 8)','',m2(p.rate))
+   +r('إضافي ×1',hm(s.o1),m2(p.ot1))+r('إضافي ×1.5',hm(s.o2),m2(p.ot2))+r('عمل أيام العطلات ×2',hm(s.h),m2(p.hol))
+   +r('إجمالي الإضافي','',m2(p.otTot))+r('المستحق قبل الخصم','',m2(p.sal+p.otTot))
+   +r('ضريبة كسب العمل ('+(+D.S.tax||0)+'% من الأساسي)','','-'+m2(p.tax))
+   +r('عجز مخصوم (بعد '+hm(p.f.free)+' مسموحة)',hm(p.f.ded),'-'+m2(p.sfd));
+}
+const payTable=(p,s)=>`<table><thead><tr><th>البند</th><th>الساعات</th><th>المبلغ</th></tr></thead><tbody>${payRows(p,s)}</tbody><tfoot><tr><td style="text-align:right">صافي المرتب</td><td></td><td>${m2(p.net)}</td></tr></tfoot></table>`;
+function renderFin(){
+  const days=monthDays(),s=sums(days),p=pay(s);
+  $('stats').innerHTML=(p.sal?`<div class="st big"><b>${m2(p.net)}</b><span>صافي المرتب</span></div>`:'<div class="st big"><span>اكتب المرتب الأساسي لحساب المستحقات</span></div>')
+   +`<div style="grid-column:1/-1" class="tw">${payTable(p,s)}</div>`
+   +`<div class="st"><b>${hm(s.sf)}</b><span>العجز الكلي</span></div><div class="st"><b>${hm(p.f.free)}</b><span>مسموح</span></div><div class="st"><b>${hm(p.f.ded)}</b><span>مخصوم</span></div>`;
+}
+function mergedDays(days){
+  const lv=leaveInfo().inM.filter(d=>!days.some(x=>x.d===d)).map(d=>({d,leave:true}));
+  return [...days.map(x=>({d:x.d,x})),...lv].sort((a,b)=>a.d.localeCompare(b.d));
+}
+$('prt').onclick=()=>{
+  const days=monthDays(),s=sums(days),pt=projTotals(),rs=monthRecs(),pk=Object.keys(pt),al=pk.reduce((a,k)=>a+pt[k],0);
+  const h=rptHead('كشف ساعات العمل')
+   +`<div class="kp">${kp(hm(s.m),'إجمالي ساعات الشهر','main')}${kp(days.length,'أيام العمل')}${kp(hm(al),'موزّع على مشاريع')}${kp(leaveInfo().inM.length,'أيام إجازة')}</div>`
+   +`<h3>ساعات المشاريع</h3><table><thead><tr><th>المشروع</th><th>الساعات (س:د)</th><th>الساعات (عشري)</th></tr></thead><tbody>${pk.map(k=>`<tr><td>${esc(k)}</td><td>${hm(pt[k])}</td><td>${dec(pt[k])}</td></tr>`).join('')||'<tr><td colspan="3">لا توجد مشاريع مسجلة</td></tr>'}</tbody><tfoot><tr><td>الإجمالي</td><td>${hm(al)}</td><td>${dec(al)}</td></tr></tfoot></table>`
+   +`<h3>الحضور والانصراف اليومي</h3><table><thead><tr><th>التاريخ</th><th>اليوم</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th></tr></thead><tbody>${mergedDays(days).map(o=>{if(o.leave)return `<tr class="l"><td>${o.d}</td><td>${DAYS[wdOf(o.d)]}</td><td>-</td><td>-</td><td>-</td></tr>`;const x=o.x,rr=rs.filter(r=>r.date===x.d&&r.out);return `<tr class="${x.t!=='عادي'?'h':''}"><td>${x.d}</td><td>${DAYS[wdOf(x.d)]}</td><td>${rr.map(r=>r.in).join(' | ')}</td><td>${rr.map(r=>r.out).join(' | ')}</td><td>${hm(x.m)}</td></tr>`}).join('')}</tbody><tfoot><tr><td colspan="4">الإجمالي</td><td>${hm(s.m)}</td></tr></tfoot></table>`
+   +rptFoot();
+  printOut(h,'hours-'+sel);
+};
+$('prtF').onclick=()=>{
+  const days=monthDays(),s=sums(days),p=pay(s);
+  const h=rptHead('كشف الحساب المادي')
+   +`<div class="kp">${kp(m2(p.net),'صافي المرتب','main')}${kp(m2(p.otTot),'إجمالي الإضافي')}${kp(m2(p.tax),'ضريبة كسب العمل')}${kp(m2(p.sfd),'عجز مخصوم')}</div>`
+   +`<h3>كشف الحساب</h3>${payTable(p,s)}`
+   +`<h3>التفصيل اليومي</h3><table><thead><tr><th>التاريخ</th><th>اليوم</th><th>الفعلي</th><th>عادي</th><th>إضافي ×1</th><th>إضافي ×1.5</th><th>×2</th><th>عجز</th></tr></thead><tbody>${mergedDays(days).map(o=>{if(o.leave)return `<tr class="l"><td>${o.d.slice(5)}</td><td>${DAYS[wdOf(o.d)]}</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>`;const x=o.x;return `<tr class="${x.t!=='عادي'?'h':''}"><td>${x.d.slice(5)}</td><td>${DAYS[wdOf(x.d)]}</td><td>${hm(x.m)}</td><td>${x.n?hm(x.n):'-'}</td><td>${x.o1?hm(x.o1):'-'}</td><td>${x.o2?hm(x.o2):'-'}</td><td>${x.h?hm(x.h):'-'}</td><td>${x.sf?hm(x.sf):'-'}</td></tr>`}).join('')}</tbody><tfoot><tr><td colspan="2">الإجمالي</td><td>${hm(s.m)}</td><td>${hm(s.n)}</td><td>${hm(s.o1)}</td><td>${hm(s.o2)}</td><td>${hm(s.h)}</td><td>${hm(s.sf)}</td></tr></tfoot></table>`
+   +rptFoot();
+  printOut(h,'finance-'+sel);
+};
+$('xlF').onclick=async()=>{
+  const days=monthDays();
+  if(!days.length){alert('لا توجد بيانات');return}
+  const s=sums(days),p=pay(s),n2=x=>+x.toFixed(2);
+  const A=[['كشف الحساب المادي - '+ym()],[],['البند','الساعات','المبلغ'],
+   ['المرتب الأساسي','',n2(p.sal)],['سعر الساعة (المرتب ÷ 30 ÷ 8)','',n2(p.rate)],
+   ['إضافي ×1',dec(s.o1),n2(p.ot1)],['إضافي ×1.5',dec(s.o2),n2(p.ot2)],['عمل أيام العطلات ×2',dec(s.h),n2(p.hol)],
+   ['إجمالي الإضافي','',n2(p.otTot)],['المستحق قبل الخصم','',n2(p.sal+p.otTot)],
+   ['ضريبة كسب العمل ('+(+D.S.tax||0)+'%)','',-n2(p.tax)],['عجز مخصوم',dec(p.f.ded),-n2(p.sfd)],
+   ['صافي المرتب','',n2(p.net)],[],['العجز الكلي',dec(s.sf)],['عجز مسموح بدون خصم',dec(p.f.free)]];
+  const ws=XLSX.utils.aoa_to_sheet(A);ws['!cols']=[{wch:36},{wch:12},{wch:14}];
+  const B=[['التاريخ','اليوم','النوع','الفعلي','عادي','إضافي ×1','إضافي ×1.5','×2','عجز'],...days.map(x=>[x.d,DAYS[wdOf(x.d)],x.t,dec(x.m),dec(x.n),dec(x.o1),dec(x.o2),dec(x.h),dec(x.sf)])];
+  const ws2=XLSX.utils.aoa_to_sheet(B);ws2['!cols']=[{wch:12},{wch:10},{wch:13},{wch:10},{wch:10},{wch:10},{wch:10},{wch:8},{wch:8}];
+  const wb=XLSX.utils.book_new();wb.Workbook={Views:[{RTL:true}]};
+  XLSX.utils.book_append_sheet(wb,ws,'كشف الحساب');
+  XLSX.utils.book_append_sheet(wb,ws2,'التفصيل اليومي');
+  const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  try{
+    const dl=await claude.use('downloads');
+    if(!dl){alert('التنزيل غير متاح هنا');return}
+    await dl.save({filename:'finance-'+sel+'.xlsx',data:buf});
+  }catch(e){if(!e||e.code!=='declined')alert('تعذر الحفظ')}
+};
+const _render=render;render=function(){_render();renderFin()};
+tab(1);renderSet();render();renderLv();
+function askName(){
+  $('mb').innerHTML='<h3>أهلاً بك 👋</h3><div class="mu" style="margin-bottom:10px">اكتب اسمك ليظهر في الكشوفات المطبوعة</div><input type="text" id="nm" placeholder="الاسم" style="width:100%;margin-bottom:10px"><button class="s p" id="nmb" style="width:100%">حفظ</button>';
+  $('md2').style.display='flex';
+}
+$('mb').addEventListener('click',e=>{
+  if(e.target.id!=='nmb')return;
+  const v=$('nm').value.trim();if(!v)return;
+  D.S.name=v;save();$('ename').value=v;$('md2').style.display='none';
+});
+$('mb').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='nm')$('nmb').click()});
+$('bk').onclick=async()=>{
+  try{
+    const dl=await claude.use('downloads');
+    if(!dl){alert('الحفظ غير متاح هنا');return}
+    await dl.save({filename:'attendance-backup-'+dkey(new Date())+'.json',data:JSON.stringify(D)});
+  }catch(e){if(!e||e.code!=='declined')alert('تعذر الحفظ')}
+};
+$('imp').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{try{const o=JSON.parse(r.result);if(!o||!Array.isArray(o.recs))throw 0;D=Object.assign(D,o);save();$('ename').value=D.S.name||'';renderSet();render();renderLv();alert('تم استيراد البيانات')}catch(x){alert('الملف غير صالح')}};
+  r.readAsText(f);e.target.value='';
+};
+if(!D.S.name)askName();
+</script>
+<script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))</script>
+</body>
+</html>

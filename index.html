@@ -79,7 +79,7 @@ details summary{cursor:pointer;font-weight:600}
 <div id="tabF" style="display:none">
 <div class="card">
   <div class="row" style="justify-content:space-between"><h3 style="margin:0">الحساب المادي</h3><span><button class="s p" id="xlF">Excel</button> <button class="s" id="prtF">طباعة</button></span></div>
-  <div class="row" style="margin:10px 0"><span>المرتب الأساسي:</span><input type="number" id="salary" step="0.01" min="0" style="width:110px"><span>ضريبة كسب العمل %:</span><input type="number" id="tax" step="0.01" min="0" style="width:70px"><span>عجز مسموح (ساعات/شهر):</span><input type="number" id="allow" step="0.5" min="0" style="width:70px"></div>
+  <div class="row" style="margin:10px 0"><span>المرتب الأساسي:</span><input type="number" id="salary" step="0.01" min="0" style="width:110px"><span>ضريبة كسب العمل %:</span><input type="number" id="tax" step="0.01" min="0" style="width:70px"><span>التأمينات (مبلغ شهري، اختياري):</span><input type="number" id="ins" step="0.01" min="0" style="width:90px"><span>عجز مسموح (ساعات/شهر):</span><input type="number" id="allow" step="0.5" min="0" style="width:70px"></div>
   <h3>التفصيل اليومي</h3>
   <div class="tw"><table><thead><tr><th>التاريخ</th><th>اليوم</th><th>الإجمالي</th><th>عادي</th><th>إضافي ×1</th><th>إضافي ×1.5</th><th>عطلة ×2</th><th>عجز</th><th>المحتسب</th></tr></thead><tbody id="daily"></tbody><tfoot id="dtot"></tfoot></table></div>
   <h3 style="margin-top:18px">كشف الحساب</h3>
@@ -507,7 +507,8 @@ $('prtF').onclick=()=>{
 function pay(s){
   const sal=+D.S.salary||0,rate=sal/30/8,f=fin(s);
   const ot1=s.o1/60*rate,ot2=s.o2/60*rate*1.5,hol=s.h/60*rate*2,otTot=ot1+ot2+hol,tax=sal*(+D.S.tax||0)/100,sfd=f.ded/60*rate;
-  return {sal,rate,ot1,ot2,hol,otTot,tax,sfd,f,net:sal+otTot-tax-sfd};
+  const ins=+D.S.ins||0;
+  return {sal,rate,ot1,ot2,hol,otTot,tax,sfd,ins,f,net:sal+otTot-tax-sfd-ins};
 }
 const m2=n=>n.toFixed(2);
 function payRows(p,s){
@@ -516,7 +517,8 @@ function payRows(p,s){
    +r('إضافي ×1',hm(s.o1),m2(p.ot1))+r('إضافي ×1.5',hm(s.o2),m2(p.ot2))+r('عمل أيام العطلات ×2',hm(s.h),m2(p.hol))
    +r('إجمالي الإضافي','',m2(p.otTot))+r('المستحق قبل الخصم','',m2(p.sal+p.otTot))
    +r('ضريبة كسب العمل ('+(+D.S.tax||0)+'% من الأساسي)','','-'+m2(p.tax))
-   +r('عجز مخصوم (بعد '+hm(p.f.free)+' مسموحة)',hm(p.f.ded),'-'+m2(p.sfd));
+   +r('عجز مخصوم (بعد '+hm(p.f.free)+' مسموحة)',hm(p.f.ded),'-'+m2(p.sfd))
+   +(p.ins?r('التأمينات','','-'+m2(p.ins)):'');
 }
 const payTable=(p,s)=>`<table><thead><tr><th>البند</th><th>الساعات</th><th>المبلغ</th></tr></thead><tbody>${payRows(p,s)}</tbody><tfoot><tr><td style="text-align:right">صافي المرتب</td><td></td><td>${m2(p.net)}</td></tr></tfoot></table>`;
 function renderFin(){
@@ -541,7 +543,7 @@ $('prt').onclick=()=>{
 $('prtF').onclick=()=>{
   const days=monthDays(),s=sums(days),p=pay(s);
   const h=rptHead('كشف الحساب المادي')
-   +`<div class="kp">${kp(m2(p.net),'صافي المرتب','main')}${kp(m2(p.otTot),'إجمالي الإضافي')}${kp(m2(p.tax),'ضريبة كسب العمل')}${kp(m2(p.sfd),'عجز مخصوم')}</div>`
+   +`<div class="kp">${kp(m2(p.net),'صافي المرتب','main')}${kp(m2(p.otTot),'إجمالي الإضافي')}${kp(m2(p.tax),'ضريبة كسب العمل')}${kp(m2(p.sfd),'عجز مخصوم')}${p.ins?kp(m2(p.ins),'التأمينات'):''}</div>`
    +`<h3>كشف الحساب</h3>${payTable(p,s)}`
    +`<h3>التفصيل اليومي</h3><table><thead><tr><th>التاريخ</th><th>اليوم</th><th>الفعلي</th><th>عادي</th><th>إضافي ×1</th><th>إضافي ×1.5</th><th>×2</th><th>عجز</th></tr></thead><tbody>${mergedDays(days).map(o=>{if(o.leave)return `<tr class="l"><td>${o.d.slice(5)}</td><td>${DAYS[wdOf(o.d)]}</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>`;const x=o.x;return `<tr class="${x.t!=='عادي'?'h':''}"><td>${x.d.slice(5)}</td><td>${DAYS[wdOf(x.d)]}</td><td>${hm(x.m)}</td><td>${x.n?hm(x.n):'-'}</td><td>${x.o1?hm(x.o1):'-'}</td><td>${x.o2?hm(x.o2):'-'}</td><td>${x.h?hm(x.h):'-'}</td><td>${x.sf?hm(x.sf):'-'}</td></tr>`}).join('')}</tbody><tfoot><tr><td colspan="2">الإجمالي</td><td>${hm(s.m)}</td><td>${hm(s.n)}</td><td>${hm(s.o1)}</td><td>${hm(s.o2)}</td><td>${hm(s.h)}</td><td>${hm(s.sf)}</td></tr></tfoot></table>`
    +rptFoot();
@@ -555,7 +557,7 @@ $('xlF').onclick=async()=>{
    ['المرتب الأساسي','',n2(p.sal)],['سعر الساعة (المرتب ÷ 30 ÷ 8)','',n2(p.rate)],
    ['إضافي ×1',dec(s.o1),n2(p.ot1)],['إضافي ×1.5',dec(s.o2),n2(p.ot2)],['عمل أيام العطلات ×2',dec(s.h),n2(p.hol)],
    ['إجمالي الإضافي','',n2(p.otTot)],['المستحق قبل الخصم','',n2(p.sal+p.otTot)],
-   ['ضريبة كسب العمل ('+(+D.S.tax||0)+'%)','',-n2(p.tax)],['عجز مخصوم',dec(p.f.ded),-n2(p.sfd)],
+   ['ضريبة كسب العمل ('+(+D.S.tax||0)+'%)','',-n2(p.tax)],['عجز مخصوم',dec(p.f.ded),-n2(p.sfd)],...(p.ins?[['التأمينات','',-n2(p.ins)]]:[]),
    ['صافي المرتب','',n2(p.net)],[],['العجز الكلي',dec(s.sf)],['عجز مسموح بدون خصم',dec(p.f.free)]];
   const ws=XLSX.utils.aoa_to_sheet(A);ws['!cols']=[{wch:36},{wch:12},{wch:14}];
   const B=[['التاريخ','اليوم','النوع','الفعلي','عادي','إضافي ×1','إضافي ×1.5','×2','عجز'],...days.map(x=>[x.d,DAYS[wdOf(x.d)],x.t,dec(x.m),dec(x.n),dec(x.o1),dec(x.o2),dec(x.h),dec(x.sf)])];
@@ -827,6 +829,13 @@ $('mb').addEventListener('click',e=>{
     }
     ask(msg,()=>{t.dataset.ok='1';t.click();delete t.dataset.ok});
   },true);
+})();
+</script>
+<script>
+(function(){
+  $('ins').value=D.S.ins||'';
+  $('ins').onchange=e=>{D.S.ins=e.target.value;save();render()};
+  render();
 })();
 </script>
 <script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))</script>

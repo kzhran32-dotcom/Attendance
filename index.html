@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#2563eb">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="البصمة">
+<meta name="apple-mobile-web-app-title" content="Fingerprint">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script>
@@ -19,7 +19,7 @@ window.claude={use:async()=>({save:async({filename,data})=>{
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);
 }})};
 </script>
-<title>بصمة الحضور والانصراف</title>
+<title>Fingerprint</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -67,7 +67,7 @@ details summary{cursor:pointer;font-weight:600}
 </head>
 <body>
 <div class="card">
-  <h1>بصمة الحضور والانصراف</h1>
+  <h1>Fingerprint</h1>
   <div id="date" class="mu"></div>
   <div id="clock"></div>
   <button id="btn">تسجيل الحضور</button>
@@ -459,7 +459,7 @@ $('lvl').addEventListener('click',e=>{const d=e.target.dataset.ld;if(d){D.leaves
 const RCSS=`@page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:"Segoe UI",Tahoma,Arial,sans-serif;color:#1b1f24;margin:0;padding:18px;font-size:13px}.hd{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1d4ed8;padding-bottom:10px;margin-bottom:14px}.hd h1{margin:0 0 4px;font-size:22px;color:#1d4ed8}.hd .m{font-size:15px;font-weight:700}.hd .s{color:#6b7280;font-size:12px}.kp{display:flex;gap:8px;margin-bottom:14px}.kp>div{flex:1;border:1px solid #d5dae1;border-radius:8px;padding:8px;text-align:center}.kp b{display:block;font-size:17px;color:#1d4ed8}.kp span{font-size:11px;color:#6b7280}.kp .main{background:#1d4ed8;border-color:#1d4ed8}.kp .main b,.kp .main span{color:#fff}h3{font-size:14px;margin:16px 0 6px;color:#1d4ed8;border-right:4px solid #1d4ed8;padding-right:8px}table{width:100%;border-collapse:collapse;margin-bottom:6px;font-size:12px}th{background:#1d4ed8;color:#fff;padding:7px 4px;font-weight:600}td{padding:6px 4px;border-bottom:1px solid #e3e6ea;text-align:center}tbody tr:nth-child(even) td{background:#f6f8fb}tr.h td{background:#fde7b0!important}tr.l td{background:#cfeedd!important}tfoot td{font-weight:700;background:#e8eefc!important;border-top:2px solid #1d4ed8}.sg{display:flex;justify-content:space-between;margin-top:46px}.sg div{width:40%;text-align:center;border-top:1px solid #333;padding-top:6px;font-size:12px}.ft{margin-top:18px;color:#9aa1ab;font-size:10px;text-align:center}table,tr{page-break-inside:avoid}`;
 const kp=(v,l,c)=>`<div class="${c||''}"><b>${v}</b><span>${l}</span></div>`;
 const rptHead=t=>`<div class="hd"><div><h1>${t}</h1><div class="s">${D.S.name?esc(D.S.name):''}</div></div><div style="text-align:left"><div class="m">${ym()}</div><div class="s">تاريخ الإصدار: ${dkey(new Date())}</div></div></div>`;
-const rptFoot=()=>`<div class="sg"><div>توقيع الموظف</div><div>اعتماد المدير</div></div><div class="ft">تم إنشاؤه بواسطة برنامج الحضور والانصراف</div>`;
+const rptFoot=()=>`<div class="sg"><div>توقيع الموظف</div><div>اعتماد المدير</div></div><div class="ft">Khaled Zhran</div>`;
 $('ename').value=D.S.name||'';
 $('ename').onchange=e=>{D.S.name=e.target.value.trim();save()};
 $('prt').onclick=()=>{
